@@ -5,8 +5,7 @@ dependencies:
   - python=3.11
   - numpy
   - pandas
-  - scipy
+  - scipy>=1.10
   - matplotlib
   - streamlit
   - pip
-
