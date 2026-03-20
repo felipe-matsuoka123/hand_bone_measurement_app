@@ -58,7 +58,7 @@ GROWTH_CHART_FIELD_LABELS = {
     "Comprimento para idade": "Comprimento (cm)",
     "Altura sentada para idade": "Altura sentada (cm)",
     "Comprimento da perna para idade": "Comprimento da perna (cm)",
-    "Razão altura sentada/altura para idade": "Razão altura sentada/altura",
+    "Razão altura sentada/altura para idade": "Razão altura sentada/altura (ex.: 0.52)",
 }
 
 
@@ -194,9 +194,15 @@ def adjust_x_axis_proportion(
     ax,
     df: pd.DataFrame,
     reference_span: float,
+    current_age: Optional[float] = None,
 ):
     age_min = float(df["Age"].min())
     age_max = float(df["Age"].max())
+
+    if current_age is not None and np.isfinite(current_age):
+        age_min = min(age_min, float(current_age))
+        age_max = max(age_max, float(current_age))
+
     age_span = max(age_max - age_min, 1e-6)
 
     ax.set_xlim(age_min, age_max)
@@ -210,6 +216,24 @@ def adjust_x_axis_proportion(
     max_width = 0.85
     height = 0.8
     ax.set_position([left, bottom, max_width * width_fraction, height])
+
+
+def ensure_point_visible(
+    ax,
+    current_age: Optional[float],
+    current_value: Optional[float],
+):
+    if current_age is not None and np.isfinite(current_age):
+        x_min, x_max = ax.get_xlim()
+        ax.set_xlim(min(x_min, float(current_age)), max(x_max, float(current_age)))
+
+    if current_value is not None and np.isfinite(current_value):
+        y_min, y_max = ax.get_ylim()
+        y_min = min(y_min, float(current_value))
+        y_max = max(y_max, float(current_value))
+        y_span = max(y_max - y_min, 1e-6)
+        y_padding = y_span * 0.05
+        ax.set_ylim(y_min - y_padding, y_max + y_padding)
 
 
 st.title("Perfil metacarpofalangeano e curvas de crescimento")
@@ -306,7 +330,10 @@ with left_col:
                 min_value=0.0,
                 value=0.0,
                 step=0.01,
-                help=f"Pode usar decimais com ponto ou vírgula. Use a mesma unidade adotada no CSV {dataset_label}.",
+                help=(
+                    f"Pode usar decimais com ponto ou vírgula. Use a mesma unidade adotada no CSV {dataset_label}."
+                    " Para a razão altura sentada/altura, informe em formato decimal, por exemplo 0.52."
+                ),
             )
             submitted = st.form_submit_button("Calcular")
 
@@ -370,7 +397,8 @@ with right_col:
             y_label,
             x_label,
         )
-        adjust_x_axis_proportion(ax, plot_df, x_axis_reference_span)
+        adjust_x_axis_proportion(ax, plot_df, x_axis_reference_span, current_age=current_age)
+        ensure_point_visible(ax, current_age, current_value)
         st.pyplot(fig)
     else:
         st.info("Calcule o z-score para ver a curva do percentil.")
